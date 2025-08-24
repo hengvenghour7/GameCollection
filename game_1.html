@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dog Action</title>
+    <link rel="stylesheet" href="page_resources/game_1.css">
+</head>
+<body>
+    <a href="./index.html">Home</a>
+    <h1>Game start</h1>
+    <div>
+        <div>
+
+            <label for="actionSelector">Pick your action</label>
+            <select name="actionSelector" id="actionSelector">
+                <option value="idle">idle</option>
+                <option value="jumpingUp">jumping Up</option>
+                <option value="jumpingDown">jumping Up</option>
+                <option value="running">running</option>
+                <option value="confuse">confuse</option>
+                <option value="rolling">rolling</option>
+                <option value="falling">falling</option>
+            </select>
+        </div>
+        <canvas id="gameCanvas" width="400" height="400"></canvas>
+    </div>
+    <script src="page_resources/game_1.js"></script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+.gameButton {
+    width: 100%;
+    display: block;
+    padding: 10px;
+    border: solid black 1px;
+    margin: 10px 0;
+    border-radius: 10px;
+    text-align: center;
+    text-decoration: none;
+}
+.gameButton:hover {
+    background-color: rgb(57, 135, 57);
+    color: whitesmoke;
+    transition: all 0.2s;
+}

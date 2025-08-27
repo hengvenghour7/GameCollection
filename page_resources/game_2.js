@@ -47,6 +47,7 @@ class Enemy {
         this.speed = (Math.random() * (-10) + 5);
         this.YSpeed = (Math.random() * (-0.3) + 0.1);
         this.angle = 0;
+        console.log("bbbb", this.image)
     }
     updateMovement = () => {
         this.x += this.speed;

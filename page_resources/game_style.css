@@ -1,0 +1,18 @@
+#gameCanvas {
+    border: solid 1px;
+}
+.gameContainer {
+    position: relative;
+    width: fit-content;
+    height: fit-content;
+}
+.gameMenu {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    color: whitesmoke;
+}
+.isNotGameOver {
+    display: none;
+}

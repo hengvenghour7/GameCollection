@@ -13,19 +13,28 @@ let lastTime = 0;
 let load = 0;
 let images = {};
 let isGameOver = false;
+let isGameWin = false;
 
 const imageSources = [
     "page_resources/images/forest_adventure_assets/Animal_Wildlife/Bear.png",
     "page_resources/images/forest_adventure_assets/Animal_Wildlife/Beatle.png",
     "page_resources/images/forest_adventure_assets/Animal_Wildlife/enemy1.png",
+    "page_resources/images/forest_adventure_assets/Animal_Wildlife/Bear_Attack.png",
+    "page_resources/images/forest_adventure_assets/Kobold_Warrior/RUN.png",
+    "page_resources/images/forest_adventure_assets/Kobold_Warrior/RUN_Reverse.png",
     "page_resources/images/forest_adventure_assets/Samurai/ATTACK_1.png",
     "page_resources/images/forest_adventure_assets/Samurai/ATTACK_1_REVERSE.png",
     "page_resources/images/forest_adventure_assets/Samurai/HURT.png",
     "page_resources/images/forest_adventure_assets/Samurai/IDLE.png",
     "page_resources/images/forest_adventure_assets/Samurai/RUN.png",
     "page_resources/images/forest_adventure_assets/Samurai/RUN_REVERSE.png",
-    "page_resources/images/forest_adventure_assets/Background/game_bg.png",
+    "page_resources/Background/Map_1.png",
 ];
+// const gameSaved = {
+//     characterHp: 100,
+//     enemyLeft: [ new BeatleEnemy ],
+//     gameStage: 1,
+// }
 const characterStates = {
     attack: 0,
     attackReverse: 1,
@@ -54,8 +63,9 @@ let logImageObject = () => {
     console.log("images loaded", images);
 }
 let startGame = () => {
-    game1.restoreHealth();
+    game1.startGame();
     isGameOver = false;
+    isGameWin = false;
     animate(0);
 }
 tryAgainButton.addEventListener("click", startGame);
@@ -63,25 +73,55 @@ class Game {
     constructor() {
         this.samurai = new Character(30, 200);
         this.health = new HealthComponent;
-        this.bear2 = new Enemy(20,4,5);
-        this.beatle1 = new BeatleEnemy (5,4,5);
+        this.enemyArray = [];
+        this.bossArray = [];
     }
     updateGameProgress = (deltaTime) => {
         if (this.samurai.healthComponent.health <= 0) isGameOver = true;
-        let characterCollisionProperty = checkIsCollide(this.samurai,[this.beatle1, this.bear2]);
-        let characterInRadiusProperty = checkInRadius(this.samurai,[this.beatle1, this.bear2], 20, 20);
+        if (this.enemyArray.length === 0 && this.bossArray.length === 0) isGameWin = true;
+        // let samuraiLocation = {
+        //     x: this.samurai.x,
+        //     y: this.samurai.y,
+        //     width: this.samurai.width,
+        //     height: this.samurai.height,
+        // }
+        context.drawImage(images.background_map_1, 0,0, 480, 320, 0, 0, canvasWidth, canvasHeight)
+        context.font = "20px Arial";
+        context.fillStyle = "whitesmoke";
+        context.fillText(`Enemies remain ${[...this.enemyArray,...this.bossArray].length}`, 5, 50); 
+        let characterCollisionProperty = checkIsCollide(this.samurai,[...this.enemyArray,...this.bossArray]);
+        let characterInRadiusProperty = checkInRadius(this.samurai,[...this.enemyArray,...this.bossArray], 20, 20);
         if (characterCollisionProperty.isCollide) this.samurai.takingDamage(characterCollisionProperty.secondCollider.damage, deltaTime);
         // this.beatle1.takingDamage(this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health).damage, deltaTime);
         if (characterInRadiusProperty.isInRadius) characterInRadiusProperty.secondCollider.takingDamage(this.samurai.attack(characterInput.keys), deltaTime);
         this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health);
         this.samurai.updateAnimation();
         this.samurai.draw();
-        this.bear2.updateAnimation();
-        this.bear2.draw();
-        this.bear2.autoMoving(deltaTime);
-        this.beatle1.updateAnimation();
-        this.beatle1.draw();
-        this.beatle1.autoMoving(deltaTime);
+        this.enemyArray = this.enemyArray.filter((res) => !res.isDeletion);
+        this.bossArray = this.bossArray.filter((res) => !res.isDeletion);
+        this.enemyArray.forEach((res) => {
+            res.updateAnimation();
+            res.draw();
+            res.autoMoving(deltaTime);
+        })
+        this.bossArray.forEach((res) => {
+            res.updateAnimation();
+            res.draw();
+            res.approachingLocation({
+            x: this.samurai.x,
+            y: this.samurai.y,
+            width: this.samurai.width,
+            height: this.samurai.height,
+        }, deltaTime);
+            // res.approachingLocation(this.samurai.x, this.samurai.y, this.samurai.width, this.samurai.height);
+        })
+    }
+    startGame = () => {
+        this.restoreHealth();
+        this.enemyArray = [new Enemy(30,4,5), new BeatleEnemy (5,4,5), new BeatleEnemy (5,4,5)];
+        this.bossArray = [new BossEnemy (100,0,0)];
+        this.enemyArray.push(...Array.from({ length: 5 }, () => new BeatleEnemy(5, 4, 5)));
+        this.enemyArray.push(...Array.from({ length: 5 }, () => new Enemy(20, 4, 5)));
     }
     restoreHealth = () => {
         this.samurai.healthComponent.restoreHealth();
@@ -246,7 +286,7 @@ class Character {
     }
 }
 class Enemy {
-    constructor (damage, forwardRow, backwardRow, collisionXOffset = 0, collisionYOffset = 0, collisionWidth = 50, collisionHeight = 50) {
+    constructor (damage, forwardRow, backwardRow, collisionXOffset = 0, collisionYOffset = 0, collisionWidth = 50, collisionHeight = 50, maxHealth = 100, sizeFactor = 2) {
         this.x = 300;
         this.y = canvasWidth/2 + Math.random()*200;
         this.actionFrame = 0;
@@ -257,6 +297,7 @@ class Enemy {
         this.height = 336/14;
         this.direction = -1;
         this.directionY = 0;
+        this.sizeFactor = sizeFactor;
         this.changeDirectionTime = 0;
         this.forwardRow = forwardRow;
         this.backwardRow = backwardRow;
@@ -264,8 +305,11 @@ class Enemy {
         this.isTakingDamageTime = 0;
         this.collisionXOffset = collisionXOffset;
         this.collisionYOffset = collisionYOffset;
+        this.needTurnBack = false;
+        this.isDeletion = false;
+        this.turnBackOffset = 100;
         this.collision = new CollisionBox(this.damage, this.x + collisionXOffset, this.y + collisionYOffset, collisionWidth, collisionHeight);
-        this.enemyHealth = new EnemyHealthComponent("red", this.x + this.width/2 - 50/2, this.y + this.height);
+        this.enemyHealth = new EnemyHealthComponent("red", this.x + this.width/2, this.y + this.height, maxHealth);
     }
     getCharacterCollision = () => {
         return this.collision;
@@ -284,8 +328,22 @@ class Enemy {
     }
     autoMoving = (deltaTime) => {
         if (this.changeDirectionTime >= 300) {
-            this.directionY = Math.random() < 0.5 ? -1 : 1;
-            this.direction = Math.random() < 0.5 ? -1 : 1;
+            if (this.x < this.turnBackOffset || this.x > canvasWidth - this.turnBackOffset) {
+                this.needTurnBack = true;
+                this.direction = this.direction*-1
+            };
+            if (this.y < this.turnBackOffset || this.y > canvasHeight - this.turnBackOffset) {
+                this.needTurnBack = true;
+                this.directionY = this.directionY*-1
+            }
+            if (this.needTurnBack && (this.x > this.turnBackOffset + 300 && this.x < canvasWidth - (this.turnBackOffset + 300)) &&
+                (this.y > this.turnBackOffset + 300 && this.y < canvasHeight - (this.turnBackOffset + 300))) {
+                this.needTurnBack = !this.needTurnBack;
+            }
+            if (!this.needTurnBack) {
+                this.directionY = Math.random() < 0.5 ? -1 : 1;
+                this.direction = Math.random() < 0.5 ? -1 : 1;
+            }
             if (this.forwardRow !== undefined && this.backwardRow !== undefined) {
                 if (this.direction === 1) {
                     this.actionRow = this.forwardRow;
@@ -301,27 +359,65 @@ class Enemy {
         this.changeDirectionTime += deltaTime;
         this.x += this.speed*this.direction;
         this.y += this.speed*this.directionY;
+        this.collision.updateLocation(this.x + this.collisionXOffset, this.y + this.collisionYOffset, this.width, this.height);
         this.enemyHealth.updateHealthLocation(this.x + this.width/2 - 50/2, this.y);
     }
     draw = () => {
         if (this.enemyHealth.health > 0) {
-            this.collision.updateLocation(this.x + this.collisionXOffset, this.y + this.collisionYOffset, this.width, this.height);
             this.enemyHealth.draw();
-            context.drawImage(images[this.actionImage], this.actionFrame * this.width, this.actionRow * this.height, this.width, this.height, this.x, this.y, 50, 50);
+            context.drawImage(images[this.actionImage], this.actionFrame * this.width, this.actionRow * this.height, this.width, this.height, this.x, this.y, this.width* this.sizeFactor, this.height* this.sizeFactor);
+        } else {
+            this.isDeletion = true;
         }
     }
 }
 class BeatleEnemy extends Enemy {
     constructor (damage, forwardRow, backwardRow) {
-        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50);
+        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50, 300);
         // this.y = 200;
         this.actionImage = "animal_wildlife_beatle";
         this.width = 64/4;
         this.height = 224/14;
     }
 }
+class BossEnemy extends Enemy {
+    constructor (damage, forwardRow, backwardRow, ) {
+        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50, 500, 0.8);
+        // this.y = 200;
+        this.actionImage = "kobold_warrior_run_reverse";
+        this.width = 1184/8;
+        this.height = 96;
+        this.speed = 3;
+        this.updateLastKnownLocationTime = 0;
+        this.lastKnownLocation = {
+            x:0,
+            y:0,
+            width:0,
+            height:0,
+        }
+    }
+    approachingLocation = (currentLocation, deltaTime) => {
+        let directionX = ((this.lastKnownLocation.x+this.lastKnownLocation.width/2) - this.x) > 0 ? 1 : -1;
+        let directionY = ((this.lastKnownLocation.y+this.lastKnownLocation.width/2) - this.y) > 0 ? 1 : -1;
+        this.x += directionX*this.speed;
+        this.y += directionY* this.speed;
+        this.collision.updateLocation(this.x + this.collisionXOffset, this.y + this.collisionYOffset, this.width, this.height);
+        this.enemyHealth.updateHealthLocation(this.x + this.width/2 - 50/2, this.y);
+        if (this.updateLastKnownLocationTime <= 0) {
+            this.lastKnownLocation = currentLocation;
+            this.updateLastKnownLocationTime = 500;
+            console.log("this x", this.x);
+        }
+        if (this.updateLastKnownLocationTime > 0) this.updateLastKnownLocationTime -= deltaTime;
+    }
+    // draw = () => {
+    //     this.enemyHealth.draw();
+    //     context.fillStyle = "blue";
+    //     context.fillRect(this.x, this.y, this.width - 100, this.height - 100);
+    // }
+}
 class HealthComponent {
-    constructor(color, x = 5, y = 5, maxHealth) {
+    constructor(color, x = 5, y = 5, maxHealth = 50, widthFactor = 2) {
         this.x = x;
         this.y = y;
         this.fullHealth = maxHealth
@@ -329,6 +425,7 @@ class HealthComponent {
         this.height = 10;
         this.isTakingDamageTime = 0;
         this.healthColor = color;
+        this.widthFactor = widthFactor;
     }
     restoreHealth = () => {
         this.health = this.fullHealth;
@@ -345,12 +442,12 @@ class HealthComponent {
         // context.strokeStyle = "red";
         // context.lineWidth = 6;
         context.fillStyle = this.healthColor;
-        if (this.health > 0) context.fillRect(this.x, this.y, this.health*2, this.height);
+        if (this.health > 0) context.fillRect(this.x, this.y, this.health*this.widthFactor, this.height);
     }
 }
 class EnemyHealthComponent extends HealthComponent {
-    constructor(color, x, y) {
-        super(color, x, y);
+    constructor(color, x, y, maxHealth, widthFactor = 1) {
+        super(color, x, y, maxHealth, widthFactor);
         this.health = 50;
         this.height = 5;
     }
@@ -372,11 +469,16 @@ let animate = (timeStamp) => {
         frameTimer = 0;
     }
     if (isGameOver === true) {
+        gameOverMenu.querySelector("h3").innerHTML = "Game Over"
+        gameOverMenu.classList.remove("isNotGameOver");
+        
+    } else if (isGameWin === true) {
+        gameOverMenu.querySelector("h3").innerHTML = "Win";
         gameOverMenu.classList.remove("isNotGameOver");
     } else {
         gameOverMenu.classList.add("isNotGameOver");
     };
-    if (isGameOver === false) requestAnimationFrame(animate);
+    if (isGameOver === false && isGameWin === false) requestAnimationFrame(animate);
 }
 loadImages(imageSources,() => {
     logImageObject();

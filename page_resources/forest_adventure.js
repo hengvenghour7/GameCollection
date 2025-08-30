@@ -30,6 +30,40 @@ const imageSources = [
     "page_resources/images/forest_adventure_assets/Samurai/RUN_REVERSE.png",
     "page_resources/Background/Map_1.png",
 ];
+const scaleFactor = 2;
+class Boundary {
+    static width = 16* scaleFactor;
+    static height = 16* scaleFactor;
+    constructor (position) {
+        this.position = position
+        this.x = this.position.x;
+        this.y = this.position.y;
+        this.height = 16* scaleFactor;
+        this.width = 16* scaleFactor;
+    }
+    getCharacterCollision = () => {
+        return this;
+    }
+    draw = () => {
+        context.fillStyle = "rgb(255,0,0, 0.5)";
+        context.fillRect(this.position.x, this.position.y, this.width, this.height);
+    }
+}
+let collision_point = [];
+    let boundaries = [];
+    for (i = 0; i< map_collision.length ; i+= 30) {
+        collision_point.push(map_collision.slice(i, 30 + i));
+    }
+    collision_point.forEach((row, i) => {
+        row.forEach((symbol, j) => {
+            if (symbol === 839) {
+                boundaries.push(new Boundary({
+                    x:j*Boundary.width,
+                    y:i*Boundary.height,
+                }))
+            };
+        })
+    })
 // const gameSaved = {
 //     characterHp: 100,
 //     enemyLeft: [ new BeatleEnemy ],
@@ -71,7 +105,7 @@ let startGame = () => {
 tryAgainButton.addEventListener("click", startGame);
 class Game {
     constructor() {
-        this.samurai = new Character(30, 200);
+        this.samurai = new Character(30, 150);
         this.health = new HealthComponent;
         this.enemyArray = [];
         this.bossArray = [];
@@ -85,7 +119,8 @@ class Game {
         //     width: this.samurai.width,
         //     height: this.samurai.height,
         // }
-        context.drawImage(images.background_map_1, 0,0, 480, 320, 0, 0, canvasWidth, canvasHeight)
+   
+        context.drawImage(images.background_map_1, 0,0, 480, 320, 0, 0, 480*scaleFactor, 320*scaleFactor)
         context.font = "20px Arial";
         context.fillStyle = "whitesmoke";
         context.fillText(`Enemies remain ${[...this.enemyArray,...this.bossArray].length}`, 5, 50); 
@@ -94,7 +129,7 @@ class Game {
         if (characterCollisionProperty.isCollide) this.samurai.takingDamage(characterCollisionProperty.secondCollider.damage, deltaTime);
         // this.beatle1.takingDamage(this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health).damage, deltaTime);
         if (characterInRadiusProperty.isInRadius) characterInRadiusProperty.secondCollider.takingDamage(this.samurai.attack(characterInput.keys), deltaTime);
-        this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health);
+        this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health, boundaries);
         this.samurai.updateAnimation();
         this.samurai.draw();
         this.enemyArray = this.enemyArray.filter((res) => !res.isDeletion);
@@ -115,11 +150,14 @@ class Game {
         }, deltaTime);
             // res.approachingLocation(this.samurai.x, this.samurai.y, this.samurai.width, this.samurai.height);
         })
+            // boundaries.forEach((res) => {
+            //     res.draw();
+            // })
     }
     startGame = () => {
         this.restoreHealth();
         this.enemyArray = [new Enemy(30,4,5), new BeatleEnemy (5,4,5), new BeatleEnemy (5,4,5)];
-        this.bossArray = [new BossEnemy (100,0,0)];
+        this.bossArray = [new BossEnemy (50,0,0)];
         this.enemyArray.push(...Array.from({ length: 5 }, () => new BeatleEnemy(5, 4, 5)));
         this.enemyArray.push(...Array.from({ length: 5 }, () => new Enemy(20, 4, 5)));
     }
@@ -159,16 +197,16 @@ class CollisionBox {
         context.fillRect(this.x, this.y, this.width, this.height);
     }
 }
-checkIsCollide = (firstCollider, colliders) => {
+checkIsCollide = (firstCollider, colliders, xOffset = 0, yOffset = 0) => {
         let collisionProperty = {
             isCollide: false,
             secondCollider: {},
         }
         colliders.forEach((res) => {
-            if ((firstCollider.getCharacterCollision().x + firstCollider.getCharacterCollision().width) >= res.getCharacterCollision().x && 
-                firstCollider.getCharacterCollision().x <= res.getCharacterCollision().x + res.getCharacterCollision().width &&
-                (firstCollider.getCharacterCollision().y + firstCollider.getCharacterCollision().width) >= res.getCharacterCollision().y && 
-                firstCollider.getCharacterCollision().y <= res.getCharacterCollision().y + res.getCharacterCollision().width) {
+            if ((firstCollider.getCharacterCollision().x + firstCollider.getCharacterCollision().width) >= res.getCharacterCollision().x + xOffset && 
+                firstCollider.getCharacterCollision().x <= res.getCharacterCollision().x + xOffset + res.getCharacterCollision().width &&
+                (firstCollider.getCharacterCollision().y + firstCollider.getCharacterCollision().height) >= res.getCharacterCollision().y + yOffset && 
+                firstCollider.getCharacterCollision().y <= res.getCharacterCollision().y + yOffset + res.getCharacterCollision().height) {
                 collisionProperty.isCollide = true;
                 collisionProperty.secondCollider = res;
                 
@@ -196,7 +234,7 @@ checkInRadius = (firstCollider, colliders, xOffset, yOffset) => {
 }
 class Character {
     constructor (damage, maxHealth) {
-        this.x = 0;
+        this.x = -50;
         this.y = 0;
         this.actionFrame = 0;
         this.speed = 6;
@@ -210,7 +248,7 @@ class Character {
         this.isTakingDamageTime = 0;
         this.direction = 1;
     }
-    updateMovement = (keys, health) => {
+    updateMovement = (keys, health, boundaries) => {
         if (this.isHurt) return {
                 health: health,
                 damage: 0,
@@ -230,21 +268,22 @@ class Character {
         } 
         if (keys.includes("w")) {
             this.actionImage = "samurai_run"
-            this.y-= this.speed;
+            if (!checkIsCollide(this, boundaries, 0, this.speed).isCollide) this.y-= this.speed;
         } 
         if (keys.includes("s")) {
             this.actionImage = "samurai_run"
-            this.y+= this.speed;
+            if (!checkIsCollide(this, boundaries, 0, -this.speed).isCollide) this.y+= this.speed;
         };
         if (keys.includes("a")) {
             this.direction = -1;
             this.actionImage = "samurai_run_reverse"
-            this.x-= this.speed;
+            if (!checkIsCollide(this, boundaries, this.speed).isCollide) this.x-= this.speed;
+            
         }
         if (keys.includes("d")) {
             this.direction = 1;
-            this.actionImage = "samurai_run"
-            this.x+= this.speed;
+            this.actionImage = "samurai_run";
+            if (!checkIsCollide(this, boundaries, -this.speed).isCollide) this.x+= this.speed;
         } 
         if (keys.length === 0) this.actionImage = "samurai_idle";
         return {
@@ -406,7 +445,6 @@ class BossEnemy extends Enemy {
         if (this.updateLastKnownLocationTime <= 0) {
             this.lastKnownLocation = currentLocation;
             this.updateLastKnownLocationTime = 500;
-            console.log("this x", this.x);
         }
         if (this.updateLastKnownLocationTime > 0) this.updateLastKnownLocationTime -= deltaTime;
     }
@@ -456,6 +494,7 @@ class EnemyHealthComponent extends HealthComponent {
         this.y = y;
     }
 }
+
 // let x = 100;
 let characterInput = new InputHandler;
 let game1 = new Game;

@@ -11,8 +11,19 @@
     left: 50%;
     top: 50%;
     transform: translate(-50%, -50%);
-    color: whitesmoke;
+}
+#startGameContainer {
+    background-image: url("./Background/Map_1.png");
+    background-size: cover;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: absolute;
+    left: 50%; top: 50%;
+    transform: translate(-50%, -50%);
 }
 .isNotGameOver {
-    display: none;
+    display: none !important;
 }

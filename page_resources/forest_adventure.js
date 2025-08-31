@@ -4,6 +4,7 @@ const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
 const gameOverMenu = document.getElementById("gameOverMenu");
 const tryAgainButton = document.getElementById("tryAgain");
+const startGameButton = document.getElementById("startGame");
 
 const canvasWidth = canvas.clientWidth;
 const canvasHeight = canvas.clientHeight;
@@ -14,6 +15,8 @@ let load = 0;
 let images = {};
 let isGameOver = false;
 let isGameWin = false;
+let isFirstStart = false;
+let isAllResourcesLoaded = false;
 
 const imageSources = [
     "page_resources/images/forest_adventure_assets/Animal_Wildlife/Bear.png",
@@ -90,6 +93,7 @@ let loadImages = (sources, callback) => {
 let checkLoaded = (sources, callback) => {
     load++;
     if (load === sources.length) {
+        isAllResourcesLoaded = true;
         callback();
     };
 }
@@ -97,12 +101,16 @@ let logImageObject = () => {
     console.log("images loaded", images);
 }
 let startGame = () => {
-    game1.startGame();
-    isGameOver = false;
-    isGameWin = false;
-    animate(0);
+    if (isAllResourcesLoaded) {
+        startGameContainer.classList.add("isNotGameOver");
+        game1.startGame();
+        isGameOver = false;
+        isGameWin = false;
+        animate(0);
+    }
 }
 tryAgainButton.addEventListener("click", startGame);
+startGameButton.addEventListener("click", startGame);
 class Game {
     constructor() {
         this.samurai = new Character(30, 150);
@@ -521,5 +529,5 @@ let animate = (timeStamp) => {
 }
 loadImages(imageSources,() => {
     logImageObject();
-    startGame();
+    // if (isFirstStart) startGame();
 });

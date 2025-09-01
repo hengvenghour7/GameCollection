@@ -32,6 +32,7 @@ const imageSources = [
     "page_resources/images/forest_adventure_assets/Samurai/RUN.png",
     "page_resources/images/forest_adventure_assets/Samurai/RUN_REVERSE.png",
     "page_resources/Background/Map_1.png",
+    "page_resources/Background/Map_2.png",
 ];
 const scaleFactor = 2;
 class Boundary {
@@ -54,8 +55,9 @@ class Boundary {
 }
 let collision_point = [];
     let boundaries = [];
-    for (i = 0; i< map_collision.length ; i+= 30) {
-        collision_point.push(map_collision.slice(i, 30 + i));
+    
+    for (i = 0; i< map_collision.data.length ; i+= map_collision.width) {
+        collision_point.push(map_collision.data.slice(i, map_collision.width + i));
     }
     collision_point.forEach((row, i) => {
         row.forEach((symbol, j) => {
@@ -128,7 +130,7 @@ class Game {
         //     height: this.samurai.height,
         // }
    
-        context.drawImage(images.background_map_1, 0,0, 480, 320, 0, 0, 480*scaleFactor, 320*scaleFactor)
+        context.drawImage(images.background_map_2, 0,0, 480, 320, 0, 0, 480*scaleFactor, 320*scaleFactor)
         context.font = "20px Arial";
         context.fillStyle = "whitesmoke";
         context.fillText(`Enemies remain ${[...this.enemyArray,...this.bossArray].length}`, 5, 50); 
@@ -243,7 +245,7 @@ checkInRadius = (firstCollider, colliders, xOffset, yOffset) => {
 class Character {
     constructor (damage, maxHealth) {
         this.x = -50;
-        this.y = 0;
+        this.y = 100;
         this.actionFrame = 0;
         this.speed = 6;
         this.actionImage = "samurai_idle";

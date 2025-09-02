@@ -6,6 +6,8 @@ const gameOverMenu = document.getElementById("gameOverMenu");
 const tryAgainButton = document.getElementById("tryAgain");
 const startGameButton = document.getElementById("startGame");
 
+canvas.width = window.innerWidth;
+canvas.height = 600;
 const canvasWidth = canvas.clientWidth;
 const canvasHeight = canvas.clientHeight;
 let frameTimer = 0;
@@ -55,7 +57,8 @@ class Boundary {
 }
 let collision_point = [];
     let boundaries = [];
-    
+let healing_zone = [];
+let healingBoundaries = [];
     for (i = 0; i< map_collision.data.length ; i+= map_collision.width) {
         collision_point.push(map_collision.data.slice(i, map_collision.width + i));
     }
@@ -69,6 +72,22 @@ let collision_point = [];
             };
         })
     })
+    for (i = 0; i< HEALING_ZONE.data.length ; i+= HEALING_ZONE.width) {
+        healing_zone.push(HEALING_ZONE.data.slice(i, HEALING_ZONE.width + i));
+    }
+    // console.log(healing_zone);
+    
+    healing_zone.forEach((row, i) => {
+        row.forEach((symbol, j) => {
+            if (symbol === 2397) {
+                healingBoundaries.push(new Boundary({
+                    x:j*Boundary.width,
+                    y:i*Boundary.height,
+                }))
+            };
+        })
+    })
+    
 // const gameSaved = {
 //     characterHp: 100,
 //     enemyLeft: [ new BeatleEnemy ],
@@ -81,6 +100,12 @@ const characterStates = {
     idle: 3,
     run: 4,
     runReverse: 5,
+}
+let heal = (keys, healthComponent, deltaTime) => {
+    const healAmount = 10
+    if (keys.includes("i")) {
+        healthComponent.healUp(healAmount, deltaTime);
+    }
 }
 let loadImages = (sources, callback) => {
     sources.forEach ((res) => {
@@ -113,32 +138,40 @@ let startGame = () => {
 }
 tryAgainButton.addEventListener("click", startGame);
 startGameButton.addEventListener("click", startGame);
+let waveNumber = 1;
+let waveEnemiesAmount = 5*waveNumber;
 class Game {
     constructor() {
         this.samurai = new Character(30, 150);
         this.health = new HealthComponent;
         this.enemyArray = [];
         this.bossArray = [];
+        this.allEnemies = [];
     }
     updateGameProgress = (deltaTime) => {
         if (this.samurai.healthComponent.health <= 0) isGameOver = true;
-        if (this.enemyArray.length === 0 && this.bossArray.length === 0) isGameWin = true;
+        // if (this.enemyArray.length === 0 && this.bossArray.length === 0) isGameWin = true;
         // let samuraiLocation = {
         //     x: this.samurai.x,
         //     y: this.samurai.y,
         //     width: this.samurai.width,
         //     height: this.samurai.height,
         // }
-   
-        context.drawImage(images.background_map_2, 0,0, 480, 320, 0, 0, 480*scaleFactor, 320*scaleFactor)
+        this.allEnemies = [...this.enemyArray,...this.bossArray];
+        context.drawImage(images.background_map_2, 0,0, 1000, 320, 0, 0, 1000*scaleFactor, 320*scaleFactor)
         context.font = "20px Arial";
         context.fillStyle = "whitesmoke";
-        context.fillText(`Enemies remain ${[...this.enemyArray,...this.bossArray].length}`, 5, 50); 
-        let characterCollisionProperty = checkIsCollide(this.samurai,[...this.enemyArray,...this.bossArray]);
-        let characterInRadiusProperty = checkInRadius(this.samurai,[...this.enemyArray,...this.bossArray], 20, 20);
+        context.fillText(`Enemies remain ${this.allEnemies.length}`, 5, 50); 
+        context.fillText(`Wave ${waveNumber}`, 5, 80); 
+        let characterCollisionProperty = checkIsCollide(this.samurai, this.allEnemies);
+        let characterAttackHitProperty = checkIsCollide(this.samurai.attackBox,this.allEnemies);
         if (characterCollisionProperty.isCollide) this.samurai.takingDamage(characterCollisionProperty.secondCollider.damage, deltaTime);
         // this.beatle1.takingDamage(this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health).damage, deltaTime);
-        if (characterInRadiusProperty.isInRadius) characterInRadiusProperty.secondCollider.takingDamage(this.samurai.attack(characterInput.keys), deltaTime);
+        if (characterAttackHitProperty.isCollide) characterAttackHitProperty.secondCollider.takingDamage(this.samurai.attack(characterInput.keys), deltaTime);
+        if (checkIsCollide(this.samurai, healingBoundaries).isCollide) {
+            this.samurai.drawText("hold i to heal", 60, 90);
+            heal(characterInput.keys, this.samurai.healthComponent, deltaTime);
+        }
         this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health, boundaries);
         this.samurai.updateAnimation();
         this.samurai.draw();
@@ -160,31 +193,50 @@ class Game {
         }, deltaTime);
             // res.approachingLocation(this.samurai.x, this.samurai.y, this.samurai.width, this.samurai.height);
         })
+        this.spawnWave(this.allEnemies);
             // boundaries.forEach((res) => {
+            //     res.draw();
+            // })
+            // healingBoundaries.forEach((res) => {
             //     res.draw();
             // })
     }
     startGame = () => {
         this.restoreHealth();
-        this.enemyArray = [new Enemy(30,4,5), new BeatleEnemy (5,4,5), new BeatleEnemy (5,4,5)];
-        this.bossArray = [new BossEnemy (50,0,0)];
-        this.enemyArray.push(...Array.from({ length: 5 }, () => new BeatleEnemy(5, 4, 5)));
-        this.enemyArray.push(...Array.from({ length: 5 }, () => new Enemy(20, 4, 5)));
+            let bossAmount = 0 + waveNumber;
+            let reamainingEnemiesAmount = waveEnemiesAmount - bossAmount;
+            this.bossArray = [];
+            this.enemyArray = [];
+            this.bossArray.push(...Array.from({ length: bossAmount}, () => new BossEnemy(50,0,0)));
+            this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new BeatleEnemy(5, 4, 5)));
+            this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new Enemy(20, 4, 5)));
     }
     restoreHealth = () => {
         this.samurai.healthComponent.restoreHealth();
+    }
+    spawnWave = (allEnemies) => {
+        if (allEnemies <= 0) {
+            let bossAmount = 0 + waveNumber;
+            let reamainingEnemiesAmount = waveEnemiesAmount - bossAmount;
+            this.bossArray.push(...Array.from({ length: bossAmount}, () => new BossEnemy(50,0,0)));
+            this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new BeatleEnemy(5, 4, 5)));
+            this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new Enemy(20, 4, 5)));
+            waveNumber++;
+            waveEnemiesAmount = 5*waveNumber;
+        };
+        return;
     }
 }
 class InputHandler {
     constructor() {
         this.keys = [];
         window.addEventListener("keydown", (e) => {
-            if ((e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k") && this.keys.indexOf(e.key) === -1) {
+            if ((e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k" || e.key === "i") && this.keys.indexOf(e.key) === -1) {
                 this.keys.push(e.key)
             };
         })
         window.addEventListener("keyup", (e) => {
-            if (e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k") {
+            if (e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k" || e.key === "i") {
                 this.keys.splice(this.keys.indexOf(e.key), 1);
             }
         })
@@ -205,6 +257,9 @@ class CollisionBox {
     draw = () => {
         context.fillStyle = "rgb(0,255,0)";
         context.fillRect(this.x, this.y, this.width, this.height);
+    }
+    getCharacterCollision = () => {
+        return this;
     }
 }
 checkIsCollide = (firstCollider, colliders, xOffset = 0, yOffset = 0) => {
@@ -254,9 +309,13 @@ class Character {
         this.height = 96;
         this.healthComponent = new HealthComponent("green", 5, 5, maxHealth);
         this.collision = new CollisionBox(this.damage, this.x + 90, this.y + 100, this.width - 70, this.height - 25);
+        this.attackBox = new CollisionBox(this.damage, this.x + 120, this.y + 100, this.width - 40, this.height - 25);
         this.isHurt = false;
         this.isTakingDamageTime = 0;
         this.direction = 1;
+    }
+    drawText = (text, textXOffset, textYOffset) => {
+        context.fillText(text, this.x + textXOffset, this.y + textYOffset);
     }
     updateMovement = (keys, health, boundaries) => {
         if (this.isHurt) return {
@@ -332,12 +391,18 @@ class Character {
         this.collision.updateLocation(this.x + 90, this.y + 100);
         context.drawImage(images[this.actionImage], this.actionFrame * 1536/16, 0 , 672/7, 96, this.x, this.y, 200, 200);
         // context.fillRect(this.x, this.y, 100,100)
+        if (this.direction === 1) {
+            this.attackBox.updateLocation(this.x + 120, this.y + 100);
+        } else {
+            this.attackBox.updateLocation(this.x + 10, this.y + 100);
+        }
+        // this.attackBox.draw();
     }
 }
 class Enemy {
     constructor (damage, forwardRow, backwardRow, collisionXOffset = 0, collisionYOffset = 0, collisionWidth = 50, collisionHeight = 50, maxHealth = 100, sizeFactor = 2) {
         this.x = 300;
-        this.y = canvasWidth/2 + Math.random()*200;
+        this.y = canvasHeight/2 + Math.random()*200;
         this.actionFrame = 0;
         this.speed = Math.random() * 2 + 2;
         this.actionImage = "animal_wildlife_bear";
@@ -482,6 +547,14 @@ class HealthComponent {
         if (this.isTakingDamageTime <= 0 && this.health != currentHealth) {
             this.isTakingDamageTime = 100;
             this.health = currentHealth;
+            return;
+        };
+        if (this.isTakingDamageTime > 0) this.isTakingDamageTime -= interval;
+    }
+    healUp = (healAmount, interval) => {
+        if (this.isTakingDamageTime <= 0) {
+            this.isTakingDamageTime = 100;
+            this.health += healAmount;
             return;
         };
         if (this.isTakingDamageTime > 0) this.isTakingDamageTime -= interval;

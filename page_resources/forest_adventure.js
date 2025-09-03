@@ -102,7 +102,7 @@ const characterStates = {
 }
 let heal = (keys, healthComponent, deltaTime) => {
     const healAmount = 10
-    if (keys.includes("i")) {
+    if (keys.includes("i") && frameTimer >= frameInterval) {
         healthComponent.healUp(healAmount, deltaTime);
     }
 }
@@ -219,11 +219,12 @@ class Game {
     };
     startGame = () => {
         this.restoreHealth();
-            let bossAmount = 0 + waveNumber;
+        waveNumber = 1;
+            let bossAmount = 1;
             let reamainingEnemiesAmount = waveEnemiesAmount - bossAmount;
             this.bossArray = [];
             this.enemyArray = [];
-            this.bossArray.push(...Array.from({ length: bossAmount}, () => new BossEnemy(50,0,0)));
+            this.bossArray.push(...Array.from({ length: bossAmount}, () => new BossEnemy(50,0,0, 50)));
             this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new BeatleEnemy(5, 4, 5)));
             this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new Enemy(20, 4, 5)));
     }
@@ -232,9 +233,9 @@ class Game {
     }
     spawnWave = (allEnemies) => {
         if (allEnemies <= 0) {
-            let bossAmount = 0 + waveNumber;
+            let bossAmount = 1;
             let reamainingEnemiesAmount = waveEnemiesAmount - bossAmount;
-            this.bossArray.push(...Array.from({ length: bossAmount}, () => new BossEnemy(50,0,0)));
+            this.bossArray.push(...Array.from({ length: bossAmount}, () => new BossEnemy(50,0,0,50 + 20*waveNumber)));
             this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new BeatleEnemy(5, 4, 5)));
             this.enemyArray.push(...Array.from({ length: Math.floor(reamainingEnemiesAmount/2) }, () => new Enemy(20, 4, 5)));
             waveNumber++;
@@ -318,7 +319,7 @@ class Character {
         this.x = -50;
         this.y = 100;
         this.actionFrame = 0;
-        this.speed = 3;
+        this.speed = 2;
         this.actionImage = "samurai_idle";
         this.damage = damage;
         this.width = 1536/16;
@@ -415,17 +416,18 @@ class Character {
     }
 }
 class Enemy {
-    constructor (damage, forwardRow, backwardRow, collisionXOffset = 0, collisionYOffset = 0, collisionWidth = 50, collisionHeight = 50, maxHealth = 100, sizeFactor = 2) {
+    constructor (damage, forwardRow, backwardRow, collisionXOffset = 0, collisionYOffset = 0, collisionWidth = 50, collisionHeight = 50, maxHealth = 50, sizeFactor = 2) {
         this.x = 300;
         this.y = canvasHeight/2 + Math.random()*200;
         this.actionFrame = 0;
-        this.speed = Math.random() * 1 + 1;
+        this.speed = Math.random() * 0.5 + 0.5;
         this.actionImage = "animal_wildlife_bear";
         this.damage = damage;
         this.width = 96/4;
         this.height = 336/14;
         this.direction = -1;
         this.directionY = 0;
+        this.maxHealth = maxHealth
         this.sizeFactor = sizeFactor;
         this.changeDirectionTime = 0;
         this.forwardRow = forwardRow;
@@ -438,7 +440,7 @@ class Enemy {
         this.isDeletion = false;
         this.turnBackOffset = 100;
         this.collision = new CollisionBox(this.damage, this.x + collisionXOffset, this.y + collisionYOffset, collisionWidth, collisionHeight);
-        this.enemyHealth = new EnemyHealthComponent("red", this.x + this.width/2, this.y + this.height, maxHealth);
+        this.enemyHealth = new EnemyHealthComponent("red", this.x + this.width/2, this.y + this.height, this.maxHealth);
     }
     getCharacterCollision = () => {
         return this.collision;
@@ -453,7 +455,7 @@ class Enemy {
             this.enemyHealth.health -= damageTaken;
             return;
         };
-        if (this.isTakingDamageTime > 0) this.isTakingDamageTime -= interval;
+        if (this.isTakingDamageTime > 0 && frameTimer >= frameInterval) this.isTakingDamageTime -= interval;
     }
     autoMoving = (deltaTime) => {
         if (this.changeDirectionTime >= 300) {
@@ -502,7 +504,7 @@ class Enemy {
 }
 class BeatleEnemy extends Enemy {
     constructor (damage, forwardRow, backwardRow) {
-        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50, 300);
+        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50, 50);
         // this.y = 200;
         this.actionImage = "animal_wildlife_beatle";
         this.width = 64/4;
@@ -510,13 +512,12 @@ class BeatleEnemy extends Enemy {
     }
 }
 class BossEnemy extends Enemy {
-    constructor (damage, forwardRow, backwardRow, ) {
-        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50, 500, 0.8);
-        // this.y = 200;
+    constructor (damage, forwardRow, backwardRow, maxHealth = 100) {
+        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50, maxHealth, 0.8);
         this.actionImage = "kobold_warrior_run_reverse";
         this.width = 1184/8;
         this.height = 96;
-        this.speed = 2;
+        this.speed = 1;
         this.updateLastKnownLocationTime = 0;
         this.lastKnownLocation = {
             x:0,
@@ -577,7 +578,7 @@ class HealthComponent {
 class EnemyHealthComponent extends HealthComponent {
     constructor(color, x, y, maxHealth, widthFactor = 1) {
         super(color, x, y, maxHealth, widthFactor);
-        this.health = 50;
+        this.health = maxHealth;
         this.height = 5;
     }
     updateHealthLocation = (x, y) => {

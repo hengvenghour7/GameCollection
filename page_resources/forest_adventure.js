@@ -106,6 +106,8 @@ class mobileGamePad {
         this.moveDirectionY = 0;
         this.isDragged = false;
         this.keys = [];
+        this.xAttack = canvasWidth - 100;
+        this.yAttack = this.y;
     };
     draw = () => {        
         context.save();
@@ -121,35 +123,63 @@ class mobileGamePad {
         context.fill();
         context.stroke();
         context.restore();
+        context.save();
+        context.beginPath();
+        context.strokeStyle = "whitesmoke"
+        context.fillStyle = "whitesmoke";
+        context.arc(this.xAttack, this.y, this.radius, 0, Math.PI*2);
+        context.fillText("Attack",this.xAttack - this.secondRadius, this.yAttack + 5);
+        context.stroke();
+        context.restore();
     }
     moveGamePad = () => {
-        canvas.addEventListener("mousedown", (e) => {
+        document.addEventListener("touchstart", (e) => {
             const rect = canvas.getBoundingClientRect();
-            this.isDragged = true;
-            if ((e.clientX) >= this.x - this.radius  && 
-            e.clientX <= this.x  + this.radius &&
-            (e.clientY - rect.top) <= this.y + this.radius) {
-                this.xInnerPad = e.clientX;
-                this.yInnerPad = e.clientY - rect.top;
+            const touchCoordinate = e.touches[0];
+            console.log("sttttt", e);
+            console.log("sttttt", (touchCoordinate.clientX) >= this.x);
+            if ((touchCoordinate.clientX) >= this.x - this.radius  && 
+            touchCoordinate.clientX <= this.x  + this.radius &&
+            (touchCoordinate.clientY - rect.top) >= this.y - this.radius &&
+            (touchCoordinate.clientY - rect.top) <= this.y + this.radius) {
+                this.isDragged = true;
+                this.xInnerPad = touchCoordinate.clientX;
+                this.yInnerPad = touchCoordinate.clientY - rect.top;
                 }
         })
-        canvas.addEventListener("mousemove", (e) => {
+        document.addEventListener("touchmove", (e) => {
             if (this.isDragged) {
                 const rect = canvas.getBoundingClientRect();
+                const touchCoordinate = e.touches[0];
                 this.isDragged = true;
-                if ((e.clientX) >= this.x - this.radius  && 
-                e.clientX <= this.x  + this.radius &&
-                (e.clientY - rect.top) <= this.y + this.radius) {
-                    this.xInnerPad = e.clientX;
-                    this.yInnerPad = e.clientY - rect.top;
-                    if (this.xInnerPad >= this.x) this.keys.push("d");
-                    if (this.xInnerPad <= this.x) this.keys.push("a");
-                    if (e.clientY - rect.top < this.y) this.keys.push("w");
-                    if (e.clientY - rect.top >= this.y) this.keys.push("s");
-                    }
+                // if ((e.clientX) >= this.x - this.radius  && 
+                // e.clientX <= this.x  + this.radius &&
+                // (e.clientY - rect.top) <= this.y + this.radius) {
+                    this.xInnerPad = Math.max(this.x - this.radius,Math.min(touchCoordinate.clientX, this.x + this.radius));
+                    this.yInnerPad = Math.max(this.y - this.radius ,Math.min(touchCoordinate.clientY - rect.top, this.y + this.radius));
+                    console.log("bvv", this.keys.indexOf("d"));
+                    if (this.xInnerPad > this.x && this.keys.indexOf("d") === -1) {
+                        this.keys.push("d");
+                        if (this.keys.includes("a")) this.keys.splice(this.keys.indexOf("a"), 1);
+                    } 
+                    if (this.xInnerPad < this.x && this.keys.indexOf("a") === -1){
+                        this.keys.push("a");
+                        if (this.keys.includes("d")) this.keys.splice(this.keys.indexOf("d"), 1);
+                    } 
+                    if (touchCoordinate.clientY - rect.top < this.y && this.keys.indexOf("w") === -1) {
+                        this.keys.push("w");
+                        if (this.keys.includes("s")) this.keys.splice(this.keys.indexOf("s"), 1);
+                    } 
+                    if (touchCoordinate.clientY - rect.top > this.y && this.keys.indexOf("s") === -1){
+                        this.keys.push("s");
+                        if (this.keys.includes("w")) this.keys.splice(this.keys.indexOf("w"), 1);
+                    } 
+                    console.log("ttt", this.keys);
+                    
+                    // }
             }
         })
-        canvas.addEventListener("mouseup", (e) => {
+        document.addEventListener("touchend", (e) => {
             this.isDragged = false;
             this.xInnerPad = this.x;
             this.yInnerPad = this.y;
@@ -219,11 +249,12 @@ class Game {
         this.allEnemies = [];
         this.cameraX = 0;
         this.cameraY = 0;
-        // this.movingPad.moveGamePad();
+        this.movingPad.moveGamePad();
     }
     updateGameProgress = (deltaTime) => {
         if (this.samurai.healthComponent.health <= 0) isGameOver = true;
         this.allEnemies = [...this.enemyArray,...this.bossArray];
+        characterInput.keys = this.movingPad.getKeys();
         let characterCollisionProperty = checkIsCollide(this.samurai, this.allEnemies);
         let characterAttackHitProperty = checkIsCollide(this.samurai.attackBox,this.allEnemies);
         if (characterCollisionProperty.isCollide) this.samurai.takingDamage(characterCollisionProperty.secondCollider.damage, deltaTime);
@@ -232,8 +263,6 @@ class Game {
             heal(characterInput.keys, this.samurai.healthComponent, deltaTime);
         }
         // console.log(this.movingPad.getKeys().length);
-        
-        // if (this.movingPad.getKeys().length !== 0) characterInput.keys = [characterInput.keys, ...this.movingPad.getKeys()];
         
         this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health, boundaries);
         this.samurai.updateAnimation();
@@ -287,7 +316,7 @@ class Game {
             this.samurai.drawText("hold i to heal", 60, 90);
         }
         context.restore();
-        // this.movingPad.draw();
+        this.movingPad.draw();
         context.font = "20px Arial";
         context.fillStyle = "whitesmoke";
         context.fillText(`Enemies remain ${this.allEnemies.length}`, 5, 50); 

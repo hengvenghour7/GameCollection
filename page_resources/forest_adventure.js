@@ -92,6 +92,76 @@ let healingBoundaries = [];
 //     enemyLeft: [ new BeatleEnemy ],
 //     gameStage: 1,
 // }
+class mobileGamePad {
+    constructor() {
+        this.x = 100;
+        this.y = canvasHeight - 100;
+        this.xInnerPad = this.x;
+        this.yInnerPad = this.y;
+        this.width = 100;
+        this.height = 200;
+        this.radius = this.width/2;
+        this.secondRadius = this.width/4;
+        this.moveDirectionX = 0;
+        this.moveDirectionY = 0;
+        this.isDragged = false;
+        this.keys = [];
+    };
+    draw = () => {        
+        context.save();
+        context.beginPath();
+        context.strokeStyle = "whitesmoke"
+        context.arc(this.x, this.y, this.radius, 0, Math.PI*2);
+        context.stroke();
+        context.restore();
+        context.save();
+        context.fillStyle = "whitesmoke";
+        context.beginPath();
+        context.arc(this.xInnerPad, this.yInnerPad, this.secondRadius, 0, Math.PI*2);
+        context.fill();
+        context.stroke();
+        context.restore();
+    }
+    moveGamePad = () => {
+        canvas.addEventListener("mousedown", (e) => {
+            const rect = canvas.getBoundingClientRect();
+            this.isDragged = true;
+            if ((e.clientX) >= this.x - this.radius  && 
+            e.clientX <= this.x  + this.radius &&
+            (e.clientY - rect.top) <= this.y + this.radius) {
+                this.xInnerPad = e.clientX;
+                this.yInnerPad = e.clientY - rect.top;
+                }
+        })
+        canvas.addEventListener("mousemove", (e) => {
+            if (this.isDragged) {
+                const rect = canvas.getBoundingClientRect();
+                this.isDragged = true;
+                if ((e.clientX) >= this.x - this.radius  && 
+                e.clientX <= this.x  + this.radius &&
+                (e.clientY - rect.top) <= this.y + this.radius) {
+                    this.xInnerPad = e.clientX;
+                    this.yInnerPad = e.clientY - rect.top;
+                    if (this.xInnerPad >= this.x) this.keys.push("d");
+                    if (this.xInnerPad <= this.x) this.keys.push("a");
+                    if (e.clientY - rect.top < this.y) this.keys.push("w");
+                    if (e.clientY - rect.top >= this.y) this.keys.push("s");
+                    }
+            }
+        })
+        canvas.addEventListener("mouseup", (e) => {
+            this.isDragged = false;
+            this.xInnerPad = this.x;
+            this.yInnerPad = this.y;
+            this.moveDirectionX = 0;
+            this.moveDirectionY = 0;
+            this.keys = []
+        })
+    }
+    getKeys = () => {
+        return this.keys;
+    }
+}
 const characterStates = {
     attack: 0,
     attackReverse: 1,
@@ -143,11 +213,13 @@ class Game {
     constructor() {
         this.samurai = new Character(30, 150);
         this.health = new HealthComponent;
+        this.movingPad = new mobileGamePad;
         this.enemyArray = [];
         this.bossArray = [];
         this.allEnemies = [];
         this.cameraX = 0;
         this.cameraY = 0;
+        // this.movingPad.moveGamePad();
     }
     updateGameProgress = (deltaTime) => {
         if (this.samurai.healthComponent.health <= 0) isGameOver = true;
@@ -159,6 +231,10 @@ class Game {
         if (checkIsCollide(this.samurai, healingBoundaries).isCollide) {
             heal(characterInput.keys, this.samurai.healthComponent, deltaTime);
         }
+        // console.log(this.movingPad.getKeys().length);
+        
+        // if (this.movingPad.getKeys().length !== 0) characterInput.keys = [characterInput.keys, ...this.movingPad.getKeys()];
+        
         this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health, boundaries);
         this.samurai.updateAnimation();
         this.enemyArray = this.enemyArray.filter((res) => !res.isDeletion);
@@ -211,6 +287,7 @@ class Game {
             this.samurai.drawText("hold i to heal", 60, 90);
         }
         context.restore();
+        // this.movingPad.draw();
         context.font = "20px Arial";
         context.fillStyle = "whitesmoke";
         context.fillText(`Enemies remain ${this.allEnemies.length}`, 5, 50); 

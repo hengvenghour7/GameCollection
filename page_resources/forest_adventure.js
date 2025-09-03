@@ -75,7 +75,6 @@ let healingBoundaries = [];
     for (i = 0; i< HEALING_ZONE.data.length ; i+= HEALING_ZONE.width) {
         healing_zone.push(HEALING_ZONE.data.slice(i, HEALING_ZONE.width + i));
     }
-    // console.log(healing_zone);
     
     healing_zone.forEach((row, i) => {
         row.forEach((symbol, j) => {
@@ -147,60 +146,77 @@ class Game {
         this.enemyArray = [];
         this.bossArray = [];
         this.allEnemies = [];
+        this.cameraX = 0;
+        this.cameraY = 0;
     }
     updateGameProgress = (deltaTime) => {
         if (this.samurai.healthComponent.health <= 0) isGameOver = true;
-        // if (this.enemyArray.length === 0 && this.bossArray.length === 0) isGameWin = true;
-        // let samuraiLocation = {
-        //     x: this.samurai.x,
-        //     y: this.samurai.y,
-        //     width: this.samurai.width,
-        //     height: this.samurai.height,
-        // }
         this.allEnemies = [...this.enemyArray,...this.bossArray];
-        context.drawImage(images.background_map_2, 0,0, 1000, 320, 0, 0, 1000*scaleFactor, 320*scaleFactor)
-        context.font = "20px Arial";
-        context.fillStyle = "whitesmoke";
-        context.fillText(`Enemies remain ${this.allEnemies.length}`, 5, 50); 
-        context.fillText(`Wave ${waveNumber}`, 5, 80); 
         let characterCollisionProperty = checkIsCollide(this.samurai, this.allEnemies);
         let characterAttackHitProperty = checkIsCollide(this.samurai.attackBox,this.allEnemies);
         if (characterCollisionProperty.isCollide) this.samurai.takingDamage(characterCollisionProperty.secondCollider.damage, deltaTime);
-        // this.beatle1.takingDamage(this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health).damage, deltaTime);
         if (characterAttackHitProperty.isCollide) characterAttackHitProperty.secondCollider.takingDamage(this.samurai.attack(characterInput.keys), deltaTime);
         if (checkIsCollide(this.samurai, healingBoundaries).isCollide) {
-            this.samurai.drawText("hold i to heal", 60, 90);
             heal(characterInput.keys, this.samurai.healthComponent, deltaTime);
         }
         this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health, boundaries);
         this.samurai.updateAnimation();
-        this.samurai.draw();
         this.enemyArray = this.enemyArray.filter((res) => !res.isDeletion);
         this.bossArray = this.bossArray.filter((res) => !res.isDeletion);
         this.enemyArray.forEach((res) => {
             res.updateAnimation();
-            res.draw();
             res.autoMoving(deltaTime);
         })
         this.bossArray.forEach((res) => {
             res.updateAnimation();
-            res.draw();
             res.approachingLocation({
             x: this.samurai.x,
             y: this.samurai.y,
             width: this.samurai.width,
             height: this.samurai.height,
         }, deltaTime);
-            // res.approachingLocation(this.samurai.x, this.samurai.y, this.samurai.width, this.samurai.height);
         })
         this.spawnWave(this.allEnemies);
-            // boundaries.forEach((res) => {
-            //     res.draw();
-            // })
-            // healingBoundaries.forEach((res) => {
-            //     res.draw();
-            // })
     }
+    cameraPanning = (keys,speed) => {
+        if (keys.includes("ArrowRight")) {
+            this.cameraX -= speed;
+        };
+        if (keys.includes("ArrowLeft")) {
+            this.cameraX += speed;
+        };
+        if (keys.includes("ArrowUp")) {
+            this.cameraY += speed;
+        };
+        if (keys.includes("ArrowDown")) {
+            this.cameraY -= speed;
+        };
+        context.translate(this.cameraX, this.cameraY)
+
+    }
+    renderGame = () => {
+        let scrollX = Math.min(Math.max(0, this.samurai.collision.x + this.samurai.collision.width - canvasWidth/2),960*scaleFactor - canvasWidth);        
+        context.save();
+        context.translate(-scrollX, 0);
+        context.drawImage(images.background_map_2, 0,0, 960, 480, 0, 0, 960*scaleFactor, 480*scaleFactor);
+        this.samurai.draw();
+        this.enemyArray.forEach((res) => {
+            res.draw();
+        });
+        this.bossArray.forEach((res) => {
+            res.draw();
+        })
+        if (checkIsCollide(this.samurai, healingBoundaries).isCollide) {
+            context.fillStyle = "Whitesmoke";
+            this.samurai.drawText("hold i to heal", 60, 90);
+        }
+        context.restore();
+        context.font = "20px Arial";
+        context.fillStyle = "whitesmoke";
+        context.fillText(`Enemies remain ${this.allEnemies.length}`, 5, 50); 
+        context.fillText(`Wave ${waveNumber}`, 5, 80); 
+        this.samurai.healthComponent.draw();
+    };
     startGame = () => {
         this.restoreHealth();
             let bossAmount = 0 + waveNumber;
@@ -231,12 +247,12 @@ class InputHandler {
     constructor() {
         this.keys = [];
         window.addEventListener("keydown", (e) => {
-            if ((e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k" || e.key === "i") && this.keys.indexOf(e.key) === -1) {
+            if ((e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k" || e.key === "i" || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") && this.keys.indexOf(e.key) === -1) {
                 this.keys.push(e.key)
             };
         })
         window.addEventListener("keyup", (e) => {
-            if (e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k" || e.key === "i") {
+            if (e.key === "w" || e.key === "a" || e.key === "s" || e.key === "d" || e.key === "k" || e.key === "i" || e.key === "ArrowLeft" || e.key === "ArrowRight" || e.key === "ArrowUp" || e.key === "ArrowDown") {
                 this.keys.splice(this.keys.indexOf(e.key), 1);
             }
         })
@@ -302,7 +318,7 @@ class Character {
         this.x = -50;
         this.y = 100;
         this.actionFrame = 0;
-        this.speed = 6;
+        this.speed = 3;
         this.actionImage = "samurai_idle";
         this.damage = damage;
         this.width = 1536/16;
@@ -352,7 +368,9 @@ class Character {
         if (keys.includes("d")) {
             this.direction = 1;
             this.actionImage = "samurai_run";
-            if (!checkIsCollide(this, boundaries, -this.speed).isCollide) this.x+= this.speed;
+            if (!checkIsCollide(this, boundaries, -this.speed).isCollide) {
+                this.x+= this.speed;
+            } 
         } 
         if (keys.length === 0) this.actionImage = "samurai_idle";
         return {
@@ -377,26 +395,23 @@ class Character {
                 this.isHurt = false;
             }, 500);
         }
-        if (this.isTakingDamageTime > 0) this.isTakingDamageTime -= interval;
+        if (this.isTakingDamageTime > 0 && frameTimer >= frameInterval) this.isTakingDamageTime -= interval;
     }
     getCharacterCollision = () => {
         return this.collision;
     }
     updateAnimation = () => {
-        this.actionFrame++
+        if (frameTimer >= frameInterval) this.actionFrame++
         if (this.actionFrame > 6) this.actionFrame = 0;
     }
     draw = () => {
-        this.healthComponent.draw();
         this.collision.updateLocation(this.x + 90, this.y + 100);
         context.drawImage(images[this.actionImage], this.actionFrame * 1536/16, 0 , 672/7, 96, this.x, this.y, 200, 200);
-        // context.fillRect(this.x, this.y, 100,100)
         if (this.direction === 1) {
             this.attackBox.updateLocation(this.x + 120, this.y + 100);
         } else {
             this.attackBox.updateLocation(this.x + 10, this.y + 100);
         }
-        // this.attackBox.draw();
     }
 }
 class Enemy {
@@ -404,7 +419,7 @@ class Enemy {
         this.x = 300;
         this.y = canvasHeight/2 + Math.random()*200;
         this.actionFrame = 0;
-        this.speed = Math.random() * 2 + 2;
+        this.speed = Math.random() * 1 + 1;
         this.actionImage = "animal_wildlife_bear";
         this.damage = damage;
         this.width = 96/4;
@@ -429,7 +444,7 @@ class Enemy {
         return this.collision;
     }
     updateAnimation = () => {
-        this.actionFrame++
+        if(frameTimer >= frameInterval)this.actionFrame++;
         if (this.actionFrame > 3) this.actionFrame = 0;
     } 
     takingDamage = (damageTaken, interval) => {        
@@ -501,7 +516,7 @@ class BossEnemy extends Enemy {
         this.actionImage = "kobold_warrior_run_reverse";
         this.width = 1184/8;
         this.height = 96;
-        this.speed = 3;
+        this.speed = 2;
         this.updateLastKnownLocationTime = 0;
         this.lastKnownLocation = {
             x:0,
@@ -523,11 +538,6 @@ class BossEnemy extends Enemy {
         }
         if (this.updateLastKnownLocationTime > 0) this.updateLastKnownLocationTime -= deltaTime;
     }
-    // draw = () => {
-    //     this.enemyHealth.draw();
-    //     context.fillStyle = "blue";
-    //     context.fillRect(this.x, this.y, this.width - 100, this.height - 100);
-    // }
 }
 class HealthComponent {
     constructor(color, x = 5, y = 5, maxHealth = 50, widthFactor = 2) {
@@ -560,8 +570,6 @@ class HealthComponent {
         if (this.isTakingDamageTime > 0) this.isTakingDamageTime -= interval;
     }
     draw = () => {
-        // context.strokeStyle = "red";
-        // context.lineWidth = 6;
         context.fillStyle = this.healthColor;
         if (this.health > 0) context.fillRect(this.x, this.y, this.health*this.widthFactor, this.height);
     }
@@ -578,16 +586,16 @@ class EnemyHealthComponent extends HealthComponent {
     }
 }
 
-// let x = 100;
 let characterInput = new InputHandler;
 let game1 = new Game;
 let animate = (timeStamp) => {
     let deltaTime = timeStamp - lastTime;
     frameTimer += deltaTime;
     lastTime = timeStamp;
+    context.clearRect(0,0, canvasWidth, canvasHeight);
+    game1.renderGame();
+    game1.updateGameProgress(deltaTime);
     if (frameTimer >= frameInterval) {
-        context.clearRect(0,0, canvasWidth, canvasHeight);
-        game1.updateGameProgress(deltaTime);
         frameTimer = 0;
     }
     if (isGameOver === true) {

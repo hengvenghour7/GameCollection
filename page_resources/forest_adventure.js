@@ -7,7 +7,7 @@ const tryAgainButton = document.getElementById("tryAgain");
 const startGameButton = document.getElementById("startGame");
 
 canvas.width = window.innerWidth;
-canvas.height = 600;
+canvas.height = window.innerHeight - 150;
 const canvasWidth = canvas.clientWidth;
 const canvasHeight = canvas.clientHeight;
 let frameTimer = 0;
@@ -143,7 +143,8 @@ class mobileGamePad {
         context.restore();
     }
     moveGamePad = () => {
-        document.addEventListener("touchstart", (e) => {
+        canvas.addEventListener("touchstart", (e) => {
+            e.preventDefault();
             const rect = canvas.getBoundingClientRect();
             const touchCoordinate = e.touches[0];
             if (touchCoordinate.clientX < this.xAttack + this.radius && touchCoordinate.clientX > this.xAttack - this.radius &&
@@ -154,7 +155,6 @@ class mobileGamePad {
                 touchCoordinate.clientY - rect.top < this.yInteract + this.radius &&touchCoordinate.clientY - rect.top > this.yInteract - this.radius) {
                 this.keys.push("i");                
             };
-            
             if ((touchCoordinate.clientX) >= this.x - this.radius  && 
             touchCoordinate.clientX <= this.x  + this.radius &&
             (touchCoordinate.clientY - rect.top) >= this.y - this.radius &&
@@ -164,14 +164,12 @@ class mobileGamePad {
                 this.yInnerPad = touchCoordinate.clientY - rect.top;
                 }
         })
-        document.addEventListener("touchmove", (e) => {
+        canvas.addEventListener("touchmove", (e) => {
+            e.preventDefault();
             if (this.isDragged) {
                 const rect = canvas.getBoundingClientRect();
                 const touchCoordinate = e.touches[0];
                 this.isDragged = true;
-                // if ((e.clientX) >= this.x - this.radius  && 
-                // e.clientX <= this.x  + this.radius &&
-                // (e.clientY - rect.top) <= this.y + this.radius) {
                     this.xInnerPad = Math.max(this.x - this.radius,Math.min(touchCoordinate.clientX, this.x + this.radius));
                     this.yInnerPad = Math.max(this.y - this.radius ,Math.min(touchCoordinate.clientY - rect.top, this.y + this.radius));
                     if (this.xInnerPad > this.x && this.keys.indexOf("d") === -1) {
@@ -194,7 +192,8 @@ class mobileGamePad {
                     // }
             }
         })
-        document.addEventListener("touchend", (e) => {
+        canvas.addEventListener("touchend", (e) => {
+            e.preventDefault();
             this.isDragged = false;
             this.xInnerPad = this.x;
             this.yInnerPad = this.y;
@@ -314,9 +313,10 @@ class Game {
 
     }
     renderGame = () => {
-        let scrollX = Math.min(Math.max(0, this.samurai.collision.x + this.samurai.collision.width - canvasWidth/2),960*scaleFactor - canvasWidth);        
+        let scrollX = Math.min(Math.max(0, this.samurai.collision.x + this.samurai.collision.width - canvasWidth/2),960*scaleFactor - canvasWidth);
+        let scrollY = Math.min(Math.max(0, this.samurai.collision.y + this.samurai.collision.height - canvasHeight/2),480*scaleFactor - canvasHeight) ;
         context.save();
-        context.translate(-scrollX, 0);
+        context.translate(-scrollX, -scrollY);
         context.drawImage(images.background_map_2, 0,0, 960, 480, 0, 0, 960*scaleFactor, 480*scaleFactor);
         this.samurai.draw();
         this.enemyArray.forEach((res) => {

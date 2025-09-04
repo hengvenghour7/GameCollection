@@ -536,7 +536,7 @@ class Character {
     }
 }
 class Enemy {
-    constructor (damage, forwardRow, backwardRow, collisionXOffset = 0, collisionYOffset = 0, collisionWidth = 50, collisionHeight = 50, maxHealth = 50, sizeFactor = 2) {
+    constructor (damage, forwardRow, backwardRow, collisionXOffset = 0, collisionYOffset = 0, collisionWidth = 50, collisionHeight = 50, maxHealth = 50, sizeFactor = 2, colsCOunt = 3) {
         this.x = 300;
         this.y = canvasHeight/2 + Math.random()*200;
         this.actionFrame = 0;

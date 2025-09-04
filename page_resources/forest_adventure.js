@@ -108,6 +108,7 @@ class mobileGamePad {
         this.keys = [];
         this.xAttack = canvasWidth - 100;
         this.yAttack = this.y;
+        this.yInteract = this.y - 100
     };
     draw = () => {        
         context.save();
@@ -129,6 +130,15 @@ class mobileGamePad {
         context.fillStyle = "whitesmoke";
         context.arc(this.xAttack, this.y, this.radius, 0, Math.PI*2);
         context.fillText("Attack",this.xAttack - this.secondRadius, this.yAttack + 5);
+        // context.fillRect(this.xAttack - this.radius, this.yAttack , 100, 100);
+        context.stroke();
+        context.restore();
+        context.save();
+        context.beginPath();
+        context.strokeStyle = "whitesmoke"
+        context.fillStyle = "whitesmoke";
+        context.arc(this.xAttack, this.yInteract, this.secondRadius, 0, Math.PI*2);
+        context.fillText("i",this.xAttack - 5, this.yInteract + 5);
         context.stroke();
         context.restore();
     }
@@ -136,8 +146,15 @@ class mobileGamePad {
         document.addEventListener("touchstart", (e) => {
             const rect = canvas.getBoundingClientRect();
             const touchCoordinate = e.touches[0];
-            console.log("sttttt", e);
-            console.log("sttttt", (touchCoordinate.clientX) >= this.x);
+            if (touchCoordinate.clientX < this.xAttack + this.radius && touchCoordinate.clientX > this.xAttack - this.radius &&
+                touchCoordinate.clientY - rect.top < this.yAttack + this.radius &&touchCoordinate.clientY - rect.top > this.yAttack - this.radius) {
+                this.keys.push("k");                
+            };
+            if (touchCoordinate.clientX < this.xAttack + this.radius && touchCoordinate.clientX > this.xAttack - this.radius &&
+                touchCoordinate.clientY - rect.top < this.yInteract + this.radius &&touchCoordinate.clientY - rect.top > this.yInteract - this.radius) {
+                this.keys.push("i");                
+            };
+            
             if ((touchCoordinate.clientX) >= this.x - this.radius  && 
             touchCoordinate.clientX <= this.x  + this.radius &&
             (touchCoordinate.clientY - rect.top) >= this.y - this.radius &&

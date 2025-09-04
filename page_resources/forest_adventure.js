@@ -174,7 +174,6 @@ class mobileGamePad {
                 // (e.clientY - rect.top) <= this.y + this.radius) {
                     this.xInnerPad = Math.max(this.x - this.radius,Math.min(touchCoordinate.clientX, this.x + this.radius));
                     this.yInnerPad = Math.max(this.y - this.radius ,Math.min(touchCoordinate.clientY - rect.top, this.y + this.radius));
-                    console.log("bvv", this.keys.indexOf("d"));
                     if (this.xInnerPad > this.x && this.keys.indexOf("d") === -1) {
                         this.keys.push("d");
                         if (this.keys.includes("a")) this.keys.splice(this.keys.indexOf("a"), 1);
@@ -191,7 +190,6 @@ class mobileGamePad {
                         this.keys.push("s");
                         if (this.keys.includes("w")) this.keys.splice(this.keys.indexOf("w"), 1);
                     } 
-                    console.log("ttt", this.keys);
                     
                     // }
             }
@@ -279,7 +277,6 @@ class Game {
         if (checkIsCollide(this.samurai, healingBoundaries).isCollide) {
             heal(characterInput.keys, this.samurai.healthComponent, deltaTime);
         }
-        // console.log(this.movingPad.getKeys().length);
         
         this.samurai.updateMovement(characterInput.keys, this.samurai.healthComponent.health, boundaries);
         this.samurai.updateAnimation();

@@ -287,12 +287,7 @@ class Game {
         })
         this.bossArray.forEach((res) => {
             res.updateAnimation();
-            res.approachingLocation({
-            x: this.samurai.x,
-            y: this.samurai.y,
-            width: this.samurai.width,
-            height: this.samurai.height,
-        }, deltaTime);
+            res.approachingLocation(this.samurai, deltaTime);
         })
         this.spawnWave(this.allEnemies);
     }
@@ -547,6 +542,7 @@ class Enemy {
         this.height = 336/14;
         this.direction = -1;
         this.directionY = 0;
+        this.actionCols = 3;
         this.maxHealth = maxHealth
         this.sizeFactor = sizeFactor;
         this.changeDirectionTime = 0;
@@ -567,7 +563,7 @@ class Enemy {
     }
     updateAnimation = () => {
         if(frameTimer >= frameInterval)this.actionFrame++;
-        if (this.actionFrame > 3) this.actionFrame = 0;
+        if (this.actionFrame > this.actionCols) this.actionFrame = 0;
     } 
     takingDamage = (damageTaken, interval) => {        
         if (this.isTakingDamageTime <= 0 && damageTaken != 0) {
@@ -614,6 +610,7 @@ class Enemy {
         this.enemyHealth.updateHealthLocation(this.x + this.width/2 - 50/2, this.y);
     }
     draw = () => {
+
         if (this.enemyHealth.health > 0) {
             this.enemyHealth.draw();
             context.drawImage(images[this.actionImage], this.actionFrame * this.width, this.actionRow * this.height, this.width, this.height, this.x, this.y, this.width* this.sizeFactor, this.height* this.sizeFactor);
@@ -633,11 +630,12 @@ class BeatleEnemy extends Enemy {
 }
 class BossEnemy extends Enemy {
     constructor (damage, forwardRow, backwardRow, maxHealth = 100) {
-        super(damage, forwardRow, backwardRow, 0 , 0, 50, 50, maxHealth, 0.8);
+        super(damage, forwardRow, backwardRow, 53 , 25, 35, 48, maxHealth, 0.8);
         this.actionImage = "kobold_warrior_run_reverse";
         this.width = 1184/8;
         this.height = 96;
         this.speed = 1;
+        this.actionCols = 7;
         this.updateLastKnownLocationTime = 0;
         this.lastKnownLocation = {
             x:0,
@@ -646,15 +644,32 @@ class BossEnemy extends Enemy {
             height:0,
         }
     }
-    approachingLocation = (currentLocation, deltaTime) => {
-        let directionX = ((this.lastKnownLocation.x+this.lastKnownLocation.width/2) - this.x) > 0 ? 1 : -1;
-        let directionY = ((this.lastKnownLocation.y+this.lastKnownLocation.width/2) - this.y) > 0 ? 1 : -1;
-        this.x += directionX*this.speed;
-        this.y += directionY* this.speed;
-        this.collision.updateLocation(this.x + this.collisionXOffset, this.y + this.collisionYOffset, this.width, this.height);
+    draw = () => {
+        if (this.direction > 0) {
+            this.actionImage = "kobold_warrior_run"
+        } else {
+            this.actionImage = "kobold_warrior_run_reverse"
+        }
+        if (this.enemyHealth.health > 0) {
+            this.enemyHealth.draw();
+            context.drawImage(images[this.actionImage], this.actionFrame * this.width, this.actionRow * this.height, this.width, this.height, this.x, this.y, this.width* this.sizeFactor, this.height* this.sizeFactor);
+        } else {
+            this.isDeletion = true;
+        }
+    }
+    approachingLocation = (target, deltaTime) => {
+        this.direction = ((this.lastKnownLocation.x+this.lastKnownLocation.width/2) - this.collision.x) > 0 ? 1 : -1;
+        let directionY = ((this.lastKnownLocation.y+this.lastKnownLocation.width/2) - this.collision.y) > 0 ? 1 : -1;
+        if (this.direction == -1) {
+            this.collision.updateLocation(this.x + this.collisionXOffset, this.y + this.collisionYOffset, this.width, this.height);
+        } else {
+            this.collision.updateLocation(this.x + this.collisionXOffset - 20, this.y + this.collisionYOffset, this.width, this.height);
+        }
+        if(!checkIsCollide(this, [target], this.direction*this.speed).isCollide) this.x += this.direction*this.speed;
+        if(!checkIsCollide(this, [target], 0, this.directionY*this.speed).isCollide) this.y += directionY* this.speed;
         this.enemyHealth.updateHealthLocation(this.x + this.width/2 - 50/2, this.y);
         if (this.updateLastKnownLocationTime <= 0) {
-            this.lastKnownLocation = currentLocation;
+            this.lastKnownLocation = target.getCharacterCollision();
             this.updateLastKnownLocationTime = 500;
         }
         if (this.updateLastKnownLocationTime > 0) this.updateLastKnownLocationTime -= deltaTime;
